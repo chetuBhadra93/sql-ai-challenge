@@ -13,7 +13,7 @@ export class QueryController {
   async handle(@Body() body: { prompt: string }) {
     const { prompt } = body;
     const { sql } = await this.nl2sql.translate(prompt);
-    const rows = this.db.execSelect(sql);
+    const rows = await this.db.execSelect(sql);
 
     // Required behavior: print to Node console
     console.log('\n--- NL→SQL ---');
