@@ -199,7 +199,7 @@ export class ReactAgentService {
     const reasoning: string[] = [];
     const observations: string[] = [];
     const sqlQueries: string[] = [];
-    let finalRows: any[] = [];
+    let allQueryResults: any[] = [];
     let iteration = 0;
 
     try {
@@ -280,7 +280,8 @@ Be concise and focused on SQL data retrieval only.`;
             try {
               const obsResult = JSON.parse(observation);
               if (obsResult.success && obsResult.data) {
-                finalRows = obsResult.data;
+                // Accumulate results from all successful queries
+                allQueryResults = allQueryResults.concat(obsResult.data);
               }
             } catch {
               // Ignore parsing errors
@@ -305,7 +306,7 @@ Be concise and focused on SQL data retrieval only.`;
         sql: sqlQueries,
         reasoning,
         observations,
-        rows: finalRows,
+        rows: allQueryResults,
         iterations: iteration,
         success: true
       };
