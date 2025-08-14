@@ -9,7 +9,8 @@ export class DbService {
   constructor() {
     this.pool = new Pool({
       host: process.env.POSTGRES_HOST || 'localhost',
-      port: parseInt(process.env.POSTGRES_PORT || '5432'),
+      // Default to 5433 to avoid clashing with a local Postgres on 5432
+      port: parseInt(process.env.POSTGRES_PORT || '5433'),
       database: process.env.POSTGRES_DB || 'sql_ai_db',
       user: process.env.POSTGRES_USER || 'sql_ai_user',
       password: process.env.POSTGRES_PASSWORD || 'sql_ai_password',
@@ -17,7 +18,7 @@ export class DbService {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     });
-    this.logger.log(`Connected to PostgreSQL at ${process.env.POSTGRES_HOST || 'localhost'}:${process.env.POSTGRES_PORT || '5432'}`);
+    this.logger.log(`Connected to PostgreSQL at ${process.env.POSTGRES_HOST || 'localhost'}:${process.env.POSTGRES_PORT || '5433'}`);
   }
 
   // SELECT-only guard by default
