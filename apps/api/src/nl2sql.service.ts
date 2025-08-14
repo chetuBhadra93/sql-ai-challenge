@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { Nl2SqlResult } from './types';
+import { Nl2SqlResult, QueryMode, ReactQueryResult } from './types';
+import { ReactAgentService } from './react-agent.service';
 
 @Injectable()
 export class Nl2SqlService {
   private readonly logger = new Logger(Nl2SqlService.name);
+
+  constructor(private readonly reactAgentService: ReactAgentService) {}
 
   private readonly DB_SCHEMA = `
 DATABASE SCHEMA (PostgreSQL):
@@ -47,6 +50,41 @@ EXAMPLES:
 `;
 
   async translate(prompt: string): Promise<Nl2SqlResult> {
+    return this.translateDirect(prompt);
+  }
+
+  async process(prompt: string, mode: QueryMode = 'direct'): Promise<Nl2SqlResult | ReactQueryResult> {
+    this.logger.log(`Processing query in ${mode} mode: ${prompt}`);
+
+    if (mode === 'react') {
+      // Check if ReAct mode is enabled
+      const reactEnabled = process.env.REACT_MODE_ENABLED === 'true';
+      if (!reactEnabled) {
+        this.logger.warn('ReAct mode requested but not enabled, falling back to direct mode');
+        return this.translateDirect(prompt);
+      }
+
+      try {
+        return await this.reactAgentService.processQuery(prompt);
+      } catch (error) {
+        this.logger.error(`ReAct processing failed, falling back to direct mode: ${error.message}`);
+        // Graceful fallback to direct mode
+        const directResult = await this.translateDirect(prompt);
+        return {
+          sql: [directResult.sql],
+          reasoning: [`ReAct mode failed, used direct translation: ${error.message}`],
+          observations: ['Fallback to direct SQL generation'],
+          rows: [], // Will be filled by controller
+          iterations: 1,
+          success: true
+        };
+      }
+    }
+
+    return this.translateDirect(prompt);
+  }
+
+  private async translateDirect(prompt: string): Promise<Nl2SqlResult> {
     const allowWrites = process.env.ALLOW_WRITE_SQL === 'true';
     
     const llm = new ChatOpenAI({
