@@ -87,6 +87,18 @@ EXAMPLES:
   private async translateDirect(prompt: string): Promise<Nl2SqlResult> {
     const allowWrites = process.env.ALLOW_WRITE_SQL === 'true';
     
+    // Check if the prompt contains delete/drop/alter operations
+    const destructiveOperations = ['delete', 'drop', 'alter', 'truncate', 'update', 'insert', 'create'];
+    const lowerPrompt = prompt.toLowerCase();
+    const hasDestructiveOperation = destructiveOperations.some(op => 
+      lowerPrompt.includes(op) && !lowerPrompt.includes('select')
+    );
+    
+    if (hasDestructiveOperation && !allowWrites) {
+      this.logger.log(`Destructive operation detected in prompt: ${prompt}`);
+      return { sql: "SELECT 'No data available' as message LIMIT 1" };
+    }
+    
     const llm = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY!,
       modelName: process.env.OPENAI_MODEL || 'gpt-4o-mini',

@@ -193,6 +193,25 @@ export class ReactAgentService {
       throw new Error('LLM not initialized');
     }
 
+    // Check if the prompt contains destructive operations
+    const destructiveOperations = ['delete', 'drop', 'alter', 'truncate', 'update', 'insert', 'create'];
+    const lowerPrompt = prompt.toLowerCase();
+    const hasDestructiveOperation = destructiveOperations.some(op => 
+      lowerPrompt.includes(op) && !lowerPrompt.includes('select')
+    );
+    
+    if (hasDestructiveOperation) {
+      this.logger.log(`Destructive operation detected in ReAct prompt: ${prompt}`);
+      return {
+        sql: ["SELECT 'No data available' as message LIMIT 1"],
+        reasoning: ['Destructive operation detected - returning no data message'],
+        observations: ['Query blocked for safety'],
+        rows: [{ message: 'No data available' }],
+        iterations: 1,
+        success: true
+      };
+    }
+
     const startTime = Date.now();
     const maxIterations = parseInt(process.env.REACT_MAX_ITERATIONS || '5');
     
