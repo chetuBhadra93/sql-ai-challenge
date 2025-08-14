@@ -1,0 +1,1 @@
+export type Nl2SqlResult = { sql: string };
