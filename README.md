@@ -1,200 +1,115 @@
-# SQL AI Challenge - Natural Language to SQL Application
+# SQL AI Challenge
 
-A backend application that converts natural language queries into SQL using NestJS, PostgreSQL, LangChain, and OpenAI.
+A Natural Language to SQL application using NestJS, PostgreSQL, LangChain, and OpenAI.
 
-## Architecture
+## Prerequisites
 
-```
-[React UI] --POST /api/query--> [NestJS Controller]
-        -> [Nl2SqlService] -> (LangChain+OpenAI generates SQL; SELECT-only guard; schema-aware)
-        -> [DbService executes SQL on PostgreSQL]
-        -> Results logged to Node console (and returned to UI)
-```
+- Node.js 18+ and npm
+- Docker and Docker Compose
+- OpenAI API key
 
-## Quick Start
+## Quick Setup
 
-1. **Install dependencies**:
+### 1. Clone and Install
 ```bash
+git clone <repository-url>
+cd sql-ai-challenge
 npm install
 ```
 
-2. **Setup environment**:
+### 2. Environment Setup
 ```bash
 cp .env.example .env
-# Add your OpenAI API key to .env
+```
+Edit `.env` and add your OpenAI API key:
+```
+OPENAI_API_KEY=your-openai-api-key-here
 ```
 
-3. **Start with Docker**:
+### 3. Database Setup (Docker)
+Start PostgreSQL in Docker:
 ```bash
-# Start both PostgreSQL and API (DB listens on 5432 inside the network; host maps to 5433 by default)
-docker-compose up -d
-
-# Or start only PostgreSQL (host port maps to 5433 by default)
-docker-compose -f docker-compose.postgres.yml up -d
-
-# Override the host port if needed (e.g., use 5432 instead of the default 5433)
-POSTGRES_PORT=5432 docker-compose -f docker-compose.postgres.yml up -d
-```
-
-4. **Test with curl**:
-```bash
-curl -s http://localhost:3000/api/query \
-  -H 'Content-Type: application/json' \
-  -d '{"prompt":"How many contacts do I have in my database?"}'
-```
-
-## Docker Commands
-
-### Using NPM Scripts (Recommended)
-```bash
-# PostgreSQL Database Only
-npm run docker:db          # Start PostgreSQL on 5432 by default
-# If local Postgres is running on 5432, map Docker to 5433 instead:
-POSTGRES_PORT=5433 npm run docker:db
-
-npm run docker:db:stop     # Stop PostgreSQL
-npm run docker:db:logs     # View PostgreSQL logs
-npm run docker:psql        # Connect to PostgreSQL
-
-# Full Application (API + Database)
-npm run docker:up          # Start both services
-npm run docker:down        # Stop all services
-npm run docker:logs        # View all logs
-```
-
-### Using Docker Compose Directly
-```bash
-# PostgreSQL Database Only (host port defaults to 5433)
-docker-compose -f docker-compose.postgres.yml up -d
-
-# Or map to 5432 if you prefer the standard port
-POSTGRES_PORT=5432 docker-compose -f docker-compose.postgres.yml up -d
-
-docker-compose -f docker-compose.postgres.yml down
-docker-compose -f docker-compose.postgres.yml logs postgres
-docker exec -it sql-ai-postgres psql -U sql_ai_user -d sql_ai_db
-
-# Full Application (API + Database)
-docker-compose up -d
-docker-compose down
-docker-compose logs
-docker-compose up --build -d  # Rebuild and start
-```
-
-### Database Connection
-PostgreSQL is accessible on:
-- **Host**: `localhost`
-- **Port**: `5433` (host default). Inside Docker network the DB listens on `5432`. You can override the host port via `POSTGRES_PORT`.
-- **Database**: `sql_ai_db`
-- **Username**: `sql_ai_user` 
-- **Password**: `sql_ai_password`
-
-## Development
-
-You have several options for running the application in development mode:
-
-### Option 1: Quick Development (Recommended)
-```bash
-# Start PostgreSQL in Docker and API locally with hot reload
-npm run start:dev:docker
-
-# If you have a local Postgres running on 5432, bind Docker to 5433 and point the API at it:
-POSTGRES_PORT=5433 npm run docker:db
-POSTGRES_PORT=5433 npm run start:dev
-```
-This command sequence ensures the app connects to the Dockerized DB when 5432 is already used by a local Postgres.
-
-### Option 2: Manual Development Setup
-```bash
-# Start PostgreSQL only
 npm run docker:db
+```
+This starts PostgreSQL on `localhost:5433` with the database `sql_ai_db`.
 
-# In a separate terminal, start API with hot reload
+### 4. Start the API
+```bash
 npm run start:dev
 ```
+The API will be available at `http://localhost:3000`.
 
-### Option 3: Full Docker Development
+## Testing the Application
+
+Test with a simple query:
 ```bash
-# Start both services in Docker (no hot reload)
-npm run docker:up
+curl -X POST http://localhost:3000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "How many contacts are in the database?"}'
 ```
 
-### Development Notes:
-- **Hot Reload**: Options 1 & 2 provide hot reload for rapid development
-- **Database Access**: All options use the same PostgreSQL database in Docker
-- **Port Access**: API runs on `localhost:3000`. PostgreSQL maps to `localhost:5433` by default on the host; inside Docker it's `postgres:5432`. Override host port with `POSTGRES_PORT` if needed.
-- **Environment**: Make sure your `.env` file has the correct `OPENAI_API_KEY`
+## Development Commands
 
-### Troubleshooting
-- Error: `role "sql_ai_user" does not exist` during `npm run start:dev`
-  - Cause: App connected to local Postgres on 5432 instead of the Docker DB.
-  - Fix: Start Docker DB on 5433 and run the API with `POSTGRES_PORT=5433`.
+| Command | Description |
+|---------|-------------|
+| `npm run start:dev` | Start API with hot reload |
+| `npm run docker:db` | Start PostgreSQL in Docker |
+| `npm run docker:db:stop` | Stop PostgreSQL container |
+| `npm run docker:psql` | Connect to PostgreSQL |
+| `npm run build` | Build the application |
+| `npm test` | Run tests |
+
+## Database Connection Details
+
+- **Host**: `localhost`
+- **Port**: `5433` (or `5432` if you change `POSTGRES_PORT`)
+- **Database**: `sql_ai_db`
+- **Username**: `sql_ai_user`
+- **Password**: `sql_ai_password`
 
 ## Environment Variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key (required)
-- `OPENAI_MODEL`: OpenAI model to use (default: gpt-4o-mini)
-- `POSTGRES_HOST`: PostgreSQL host (default: localhost)
-- `POSTGRES_PORT`: PostgreSQL host port (default: 5433; inside Docker it remains 5432)
-- `POSTGRES_DB`: Database name (default: sql_ai_db)
-- `POSTGRES_USER`: Database user (default: sql_ai_user)
-- `POSTGRES_PASSWORD`: Database password (default: sql_ai_password)
-- `ALLOW_WRITE_SQL`: Allow write operations (default: false)
-- `API_PORT`: API server port (default: 3000)
+Required:
+- `OPENAI_API_KEY`: Your OpenAI API key
+
+Optional (with defaults):
+- `OPENAI_MODEL`: OpenAI model (default: `gpt-4o-mini`)
+- `API_PORT`: API server port (default: `3000`)
+- `POSTGRES_HOST`: Database host (default: `localhost`)
+- `POSTGRES_PORT`: Database port (default: `5433`)
+- `ALLOW_WRITE_SQL`: Allow SQL writes (default: `false`)
+
+## Advanced Features
+
+### ReAct Mode
+For complex queries with reasoning:
+```bash
+curl -X POST http://localhost:3000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Show me recent contacts and their cases", "mode": "react"}'
+```
+
+### Full Docker Setup
+To run everything in Docker:
+```bash
+docker-compose up -d
+```
+
+## Troubleshooting
+
+**Port 5432 already in use?**
+If you have local PostgreSQL running, the Docker container uses port 5433 by default.
+
+**Database connection errors?**
+Make sure PostgreSQL is running: `npm run docker:db`
+
+**API not starting?**
+Check your `.env` file has `OPENAI_API_KEY` set.
 
 ## Database Schema
 
-The application includes two tables and one view:
-- `contacts`: id (SERIAL), first_name (VARCHAR), last_name (VARCHAR), created_at (TIMESTAMP), updated_at (TIMESTAMP)
-- `cases`: id (SERIAL), topic (TEXT), created_at (TIMESTAMP), updated_at (TIMESTAMP)  
-- `recent_activity` (view): Combined recent activity from contacts and cases
+- **contacts**: `id`, `first_name`, `last_name`, `created_at`, `updated_at`
+- **cases**: `id`, `topic`, `created_at`, `updated_at`
+- **recent_activity**: View combining contacts and cases
 
-Sample data is automatically loaded when the PostgreSQL container starts.
-
-## Safety Features
-
-- **SELECT-only by default**: Prevents data modification
-- **Connection pooling**: Efficient PostgreSQL connections
-- **Schema-aware prompts**: Accurate SQL generation
-- **Error handling**: Graceful failure modes
-
-## API Endpoints
-
-### POST /api/query
-Convert natural language to SQL and execute.
-
-**Request:**
-```json
-{
-  "prompt": "How many contacts were created in 2024?"
-}
-```
-
-**Response:**
-```json
-{
-  "sql": "SELECT COUNT(*) FROM contacts WHERE created_at >= '2024-01-01'::timestamp",
-  "rows": [{"count": "42"}]
-}
-```
-
-## Project Structure
-
-```
-├── apps/
-│   └── api/                    # NestJS backend
-│       ├── src/
-│       │   ├── app.module.ts
-│       │   ├── query.controller.ts
-│       │   ├── nl2sql.service.ts
-│       │   ├── db.service.ts
-│       │   └── types.ts
-│       └── main.ts
-├── db/
-│   └── postgresql/             # PostgreSQL schema and seed data
-│       ├── 01-schema.sql
-│       └── 02-seed.sql
-├── docker-compose.yml          # PostgreSQL and API containers
-├── Dockerfile.api             # API container build
-└── package.json
-```
+Sample data is loaded automatically when the database starts.
