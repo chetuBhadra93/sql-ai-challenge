@@ -1,15 +1,15 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { Nl2SqlService } from './nl2sql.service';
 import { DbService } from './db.service';
+import { TableEmbeddingsService } from './table-embeddings.service';
 import { QueryMode, ReactQueryResult, Nl2SqlResult } from './types';
-import { OpenTablesService } from './open-tables.service';
 
 @Controller('api/query')
 export class QueryController {
   constructor(
     private readonly nl2sql: Nl2SqlService,
     private readonly db: DbService,
-    private readonly openTables: OpenTablesService,
+    private readonly tableEmbeddings: TableEmbeddingsService,
   ) {}
 
   @Post()
@@ -107,9 +107,46 @@ export class QueryController {
   }
 
   @Post('match')
-  async match(@Body() body: { candidates: string[]; topK?: number; minScore?: number }) {
-    const { candidates, topK = 10, minScore = -10000 } = body;
-    const results = await this.openTables.suggestForList(candidates, topK, minScore);
-    return { count: results.length, results };
+  async match(@Body() body: { table: string; topK?: number }) {
+    const { table, topK = 5 } = body;
+    
+    try {
+      const matches = await this.tableEmbeddings.findBestTableMatch(table, topK);
+      
+      console.log('\n--- Table Vector Search ---');
+      console.log('Query:', table);
+      console.log('Matches found:', matches.length);
+      console.table(matches.map(m => ({
+        table: m.metadata.tableName,
+        score: m.score.toFixed(4),
+        description: m.metadata.description || 'No description'
+      })));
+
+      return { 
+        count: matches.length, 
+        results: matches.map(match => ({
+          tableName: match.metadata.tableName,
+          score: match.score,
+          description: match.metadata.description
+        }))
+      };
+    } catch (error) {
+      console.error('Error in table matching:', error.message);
+      return { 
+        count: 0, 
+        results: [],
+        error: error.message 
+      };
+    }
+  }
+
+  @Post('init-embeddings')
+  async initEmbeddings() {
+    try {
+      await this.tableEmbeddings.initializeEmbeddings();
+      return { success: true, message: 'Embeddings initialized successfully' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 }

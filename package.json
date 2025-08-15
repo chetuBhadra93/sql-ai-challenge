@@ -28,6 +28,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^10.3.3",
     "@nestjs/platform-express": "^10.3.3",
+    "@pinecone-database/pinecone": "^6.1.2",
     "dotenv": "^16.4.5",
     "fuzzysort": "^3.1.0",
     "pg": "^8.16.3",

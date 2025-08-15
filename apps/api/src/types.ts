@@ -9,4 +9,13 @@ export type ReactQueryResult = {
   success: boolean;
 };
 
-export type QueryMode = "direct" | "react";
+export type QueryMode = 'direct' | 'react';
+
+export interface TableMatch {
+  id: string;
+  score: number;
+  metadata: {
+    tableName: string;
+    description?: string;
+  };
+}
