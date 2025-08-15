@@ -2,12 +2,14 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { Nl2SqlService } from './nl2sql.service';
 import { DbService } from './db.service';
 import { QueryMode, ReactQueryResult, Nl2SqlResult } from './types';
+import { OpenTablesService } from './open-tables.service';
 
 @Controller('api/query')
 export class QueryController {
   constructor(
     private readonly nl2sql: Nl2SqlService,
-    private readonly db: DbService
+    private readonly db: DbService,
+    private readonly openTables: OpenTablesService,
   ) {}
 
   @Post()
@@ -43,14 +45,14 @@ export class QueryController {
       // This is a fallback to direct mode - convert to ReactQueryResult format
       const directResult = result as Nl2SqlResult;
       const rows = await this.db.execSelect(directResult.sql);
-      
+
       const reactResult: ReactQueryResult = {
         sql: [directResult.sql],
         reasoning: ['Fallback to direct mode due to ReAct being disabled'],
         observations: ['Direct SQL generation used'],
         rows: rows,
         iterations: 1,
-        success: true
+        success: true,
       };
 
       // Enhanced console logging for ReAct mode (fallback)
@@ -74,7 +76,11 @@ export class QueryController {
     const reactResult = result as ReactQueryResult;
 
     // For ReAct mode, if rows are empty, execute the final SQL to get actual data
-    if (reactResult.success && reactResult.sql?.length > 0 && (!reactResult.rows || reactResult.rows.length === 0)) {
+    if (
+      reactResult.success &&
+      reactResult.sql?.length > 0 &&
+      (!reactResult.rows || reactResult.rows.length === 0)
+    ) {
       try {
         const finalSql = reactResult.sql[reactResult.sql.length - 1];
         reactResult.rows = await this.db.execSelect(finalSql);
@@ -98,5 +104,12 @@ export class QueryController {
     }
 
     return reactResult;
+  }
+
+  @Post('match')
+  async match(@Body() body: { candidates: string[]; topK?: number; minScore?: number }) {
+    const { candidates, topK = 10, minScore = -10000 } = body;
+    const results = await this.openTables.suggestForList(candidates, topK, minScore);
+    return { count: results.length, results };
   }
 }
