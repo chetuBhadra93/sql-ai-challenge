@@ -1,17 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { Pinecone } from '@pinecone-database/pinecone';
+import { OpenAIEmbeddings } from '@langchain/openai';
 import { TableMatch } from './types';
 
 @Injectable()
 export class PineconeService {
   private pinecone: Pinecone;
   private indexName: string;
+  private embeddings: OpenAIEmbeddings;
 
   constructor() {
     this.pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY,
     });
     this.indexName = process.env.PINECONE_INDEX_NAME || 'table-embeddings';
+    this.embeddings = new OpenAIEmbeddings({
+      openAIApiKey: process.env.OPENAI_API_KEY,
+      modelName: 'text-embedding-3-small',
+      dimensions: 512,
+    });
   }
 
   async initialize() {
@@ -23,25 +30,7 @@ export class PineconeService {
   }
 
   async createEmbedding(text: string): Promise<number[]> {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        input: text,
-        model: 'text-embedding-3-small',
-        dimensions: 512,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.data[0].embedding;
+    return await this.embeddings.embedQuery(text);
   }
 
   async upsertTableEmbeddings(tables: Array<{ name: string; description?: string }>) {
